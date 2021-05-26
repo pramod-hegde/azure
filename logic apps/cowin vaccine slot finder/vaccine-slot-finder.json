@@ -1,0 +1,341 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "For_each_search_date(s)": {
+                "actions": {
+                    "For_each_2": {
+                        "actions": {
+                            "For_each_3": {
+                                "actions": {
+                                    "Condition": {
+                                        "actions": {
+                                            "Append_to_array_variable": {
+                                                "inputs": {
+                                                    "name": "VaccineSlots",
+                                                    "value": {
+                                                        "available slots for first dose": "@items('For_each_3')?['available_capacity_dose1']",
+                                                        "center name": "@items('For_each_2')?['name']",
+                                                        "date": "@items('For_each_3')?['date']",
+                                                        "vaccine": "@items('For_each_3')?['vaccine']"
+                                                    }
+                                                },
+                                                "runAfter": {},
+                                                "type": "AppendToArrayVariable"
+                                            }
+                                        },
+                                        "expression": {
+                                            "and": [
+                                                {
+                                                    "greater": [
+                                                        "@items('For_each_3')?['available_capacity_dose1']",
+                                                        0
+                                                    ]
+                                                },
+                                                {
+                                                    "greaterOrEquals": [
+                                                        "@items('For_each_3')?['min_age_limit']",
+                                                        45
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "runAfter": {},
+                                        "type": "If"
+                                    }
+                                },
+                                "foreach": "@items('For_each_2')?['sessions']",
+                                "runAfter": {},
+                                "runtimeConfiguration": {
+                                    "concurrency": {
+                                        "repetitions": 20
+                                    }
+                                },
+                                "type": "Foreach"
+                            }
+                        },
+                        "foreach": "@body('Parse_JSON')?['centers']",
+                        "runAfter": {
+                            "Parse_JSON": [
+                                "Succeeded"
+                            ]
+                        },
+                        "runtimeConfiguration": {
+                            "concurrency": {
+                                "repetitions": 20
+                            }
+                        },
+                        "type": "Foreach"
+                    },
+                    "HTTP": {
+                        "inputs": {
+                            "method": "GET",
+                            "uri": "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=@{variables('DistrictId')}&date=@{items('For_each_search_date(s)')}"
+                        },
+                        "runAfter": {},
+                        "type": "Http"
+                    },
+                    "Parse_JSON": {
+                        "inputs": {
+                            "content": "@body('HTTP')",
+                            "schema": {
+                                "properties": {
+                                    "centers": {
+                                        "items": {
+                                            "properties": {
+                                                "address": {
+                                                    "type": "string"
+                                                },
+                                                "block_name": {
+                                                    "type": "string"
+                                                },
+                                                "center_id": {
+                                                    "type": "integer"
+                                                },
+                                                "district_name": {
+                                                    "type": "string"
+                                                },
+                                                "fee_type": {
+                                                    "type": "string"
+                                                },
+                                                "from": {
+                                                    "type": "string"
+                                                },
+                                                "lat": {
+                                                    "type": "integer"
+                                                },
+                                                "long": {
+                                                    "type": "integer"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "pincode": {
+                                                    "type": "integer"
+                                                },
+                                                "sessions": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "available_capacity": {
+                                                                "type": "integer"
+                                                            },
+                                                            "available_capacity_dose1": {
+                                                                "type": "integer"
+                                                            },
+                                                            "available_capacity_dose2": {
+                                                                "type": "integer"
+                                                            },
+                                                            "date": {
+                                                                "type": "string"
+                                                            },
+                                                            "min_age_limit": {
+                                                                "type": "integer"
+                                                            },
+                                                            "session_id": {
+                                                                "type": "string"
+                                                            },
+                                                            "slots": {
+                                                                "items": {
+                                                                    "type": "string"
+                                                                },
+                                                                "type": "array"
+                                                            },
+                                                            "vaccine": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "session_id",
+                                                            "date",
+                                                            "available_capacity",
+                                                            "min_age_limit",
+                                                            "vaccine",
+                                                            "slots",
+                                                            "available_capacity_dose1",
+                                                            "available_capacity_dose2"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "state_name": {
+                                                    "type": "string"
+                                                },
+                                                "to": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "center_id",
+                                                "name",
+                                                "address",
+                                                "state_name",
+                                                "district_name",
+                                                "block_name",
+                                                "pincode",
+                                                "lat",
+                                                "long",
+                                                "from",
+                                                "to",
+                                                "fee_type",
+                                                "sessions"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "runAfter": {
+                            "HTTP": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "ParseJson"
+                    }
+                },
+                "foreach": "@variables('SearchDates')",
+                "runAfter": {
+                    "Initialize_search_date": [
+                        "Succeeded"
+                    ]
+                },
+                "runtimeConfiguration": {
+                    "concurrency": {
+                        "repetitions": 1
+                    }
+                },
+                "type": "Foreach"
+            },
+            "Initialize_DistrictId": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "DistrictId",
+                            "type": "string",
+                            "value": "281"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_VaccineSlots_array": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_VaccineSlots_array": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "VaccineSlots",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "runAfter": {},
+                "type": "InitializeVariable"
+            },
+            "Initialize_search_date": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "SearchDates",
+                            "type": "array",
+                            "value": [
+                                "@formatDateTime(addDays(utcNow(),0),'dd-MM-yyyy')"
+                            ]
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_DistrictId": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Verify_output": {
+                "actions": {
+                    "Convert_Json_to_Html_table": {
+                        "inputs": {
+                            "format": "HTML",
+                            "from": "@variables('VaccineSlots')"
+                        },
+                        "runAfter": {},
+                        "type": "Table"
+                    },
+                    "Send_email_notification": {
+                        "inputs": {
+                            "body": {
+                                "Body": "<p>@{body('Convert_Json_to_Html_table')}</p>",
+                                "Importance": "High",
+                                "Subject": "Found COVID Vaccine Slots",
+                                "To": "email@company.com"
+                            },
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['office365']['connectionId']"
+                                }
+                            },
+                            "method": "post",
+                            "path": "/v2/Mail"
+                        },
+                        "runAfter": {
+                            "Convert_Json_to_Html_table": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "ApiConnection"
+                    }
+                },
+                "expression": {
+                    "and": [
+                        {
+                            "greater": [
+                                "@length(variables('VaccineSlots'))",
+                                0
+                            ]
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "For_each_search_date(s)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "If"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "Recurrence": {
+                "recurrence": {
+                    "frequency": "Minute",
+                    "interval": 30
+                },
+                "type": "Recurrence"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "office365": {
+                    "connectionId": "connectionId",
+                    "connectionName": "connectionName",
+                    "id": "id"
+                }
+            }
+        }
+    }
+}
